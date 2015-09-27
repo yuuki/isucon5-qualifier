@@ -110,8 +110,8 @@ sub user_from_account {
 
 sub friend_user_ids_of_user_id {
     my ($user_id) = (@_);
-    my $friends_query = 'SELECT * FROM relations WHERE one = ? ORDER BY created_at DESC';
-    return db->select_all($friends_query, $user_id);
+    my $friends_query = 'SELECT another FROM relations WHERE one = ? ORDER BY created_at DESC';
+    return [ map { $_->{another} } @{db->select_all($friends_query, $user_id)} ];
 }
 
 sub is_friend {
