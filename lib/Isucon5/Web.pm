@@ -82,10 +82,10 @@ SELECT user_id, owner_id, created_at_date, created_at as updated
 FROM footprints
 WHERE user_id = ?
 ORDER BY created_at DESC
-LIMIT ?
+LIMIT 50
 SQL
-    while (scalar @$footprints < 10) {
-        for my $fp (@{db->select_all($query, $user_id, $counts)}) {
+    while (scalar @$footprints < $counts) {
+        for my $fp (@{db->select_all($query, $user_id)}) {
             my $key = $fp->{created_at_date} . $fp->{owner_id};
             # 同じ日の同じonwerからの足跡はskipする
             if ($footprints_map->{$key}) { next; }
@@ -95,7 +95,7 @@ SQL
             $fp->{account_name} = $owner->{account_name};
             $fp->{nick_name} = $owner->{nick_name};
             push @$footprints, $fp;
-            last if scalar @$footprints >= 10;
+            last if scalar @$footprints >= $counts;
         }
     }
     return $footprints;
