@@ -5,28 +5,45 @@ use warnings;
 use utf8;
 use Kossy;
 use DBIx::Sunny;
+use Scope::Container::DBI;
 use Encode;
 
 my $db;
 sub db {
-    $db ||= do {
-        my %db = (
-            host => $ENV{ISUCON5_DB_HOST} || 'localhost',
-            port => $ENV{ISUCON5_DB_PORT} || 3306,
-            username => $ENV{ISUCON5_DB_USER} || 'root',
-            password => $ENV{ISUCON5_DB_PASSWORD},
-            database => $ENV{ISUCON5_DB_NAME} || 'isucon5q',
-        );
-        DBIx::Sunny->connect(
-            "dbi:mysql:database=$db{database};host=$db{host};port=$db{port}", $db{username}, $db{password}, {
-                RaiseError => 1,
-                PrintError => 0,
-                AutoInactiveDestroy => 1,
-                mysql_enable_utf8   => 1,
-                mysql_auto_reconnect => 1,
-            },
-        );
-    };
+  my %db = (
+      host => $ENV{ISUCON5_DB_HOST} || 'localhost',
+      port => $ENV{ISUCON5_DB_PORT} || 3306,
+      username => $ENV{ISUCON5_DB_USER} || 'root',
+      password => $ENV{ISUCON5_DB_PASSWORD},
+      database => $ENV{ISUCON5_DB_NAME} || 'isucon5q',
+  );
+  # http://blog.nomadscafe.jp/2011/04/dbixsunny.html
+  Scope::Container::DBI->connect(
+      "dbi:mysql:database=$db{database};mysql_socket=/var/run/mysqld/mysqld.sock", $db{username}, $db{password}, {
+          RootClass  => 'DBIx::Sunny',
+          RaiseError => 1,
+          PrintError => 0,
+          AutoInactiveDestroy => 1,
+          mysql_enable_utf8   => 1,
+      },
+  );
+}
+
+my $USERS = +{};
+for (@{db->select_all("SELECT * FROM users")}) {
+    $USERS->{$_->{id}} = $_;
+    $USERS->{$_->{email}} = $_;
+    $USERS->{$_->{account_name}} = $_;
+}
+
+my $SALTS = +{};
+for (@{db->select_all("SELECT * FROM salts")}) {
+    $SALTS->{$_->{user_id}} = $_;
+}
+
+my $PROFILES = +{};
+for (@{db->select_all("SELECT * FROM profiles")}) {
+    $PROFILES->{$_->{user_id}} = $_;
 }
 
 my ($SELF, $C);
@@ -55,20 +72,67 @@ sub abort_content_not_found {
     $C->halt(404, encode_utf8($C->tx->render('error.tx', { message => '要求されたコンテンツは存在しません' })));
 }
 
+sub get_footprints_for_user_id {
+    my ($user_id, $counts) = @_;
+    my $footprints = [];
+    my $footprints_map = +{}; # $footprints_map->{"$date$owner_id"} = 1;
+
+    my $query = <<SQL;
+SELECT user_id, owner_id, created_at_date, created_at as updated
+FROM footprints
+WHERE user_id = ?
+ORDER BY created_at DESC
+SQL
+    for my $fp (@{db->select_all($query, $user_id)}) {
+        my $key = $fp->{created_at_date} . $fp->{owner_id};
+        # 同じ日の同じonwerからの足跡はskipする
+        if ($footprints_map->{$key}) { next; }
+        $footprints_map->{$key} = 1;
+
+        my $owner = get_user($fp->{owner_id});
+        $fp->{account_name} = $owner->{account_name};
+        $fp->{nick_name} = $owner->{nick_name};
+        push @$footprints, $fp;
+        last if scalar @$footprints >= $counts;
+    }
+    return $footprints;
+}
+
+# 使ってない
+sub _old_get_footprints_for_user_id {
+    my ($user_id) = @_;
+    my $query = <<SQL;
+SELECT user_id, owner_id, MAX(created_at) as updated
+FROM footprints
+WHERE user_id = ?
+GROUP BY user_id, owner_id, created_at_date
+ORDER BY updated DESC
+LIMIT 50
+SQL
+    my $footprints = [];
+    for my $fp (@{db->select_all($query, $user_id)}) {
+        my $owner = get_user($fp->{owner_id});
+        $fp->{account_name} = $owner->{account_name};
+        $fp->{nick_name} = $owner->{nick_name};
+        push @$footprints, $fp;
+    }
+    return $footprints;
+}
+
+use Digest::SHA;
+my $sha = Digest::SHA->new(512);
 sub authenticate {
     my ($email, $password) = @_;
-    my $query = <<SQL;
-SELECT u.id AS id, u.account_name AS account_name, u.nick_name AS nick_name, u.email AS email
-FROM users u
-JOIN salts s ON u.id = s.user_id
-WHERE u.email = ? AND u.passhash = SHA2(CONCAT(?, s.salt), 512)
-SQL
-    my $result = db->select_row($query, $email, $password);
+
+    my $user = $USERS->{$email};
+    my $salt = $SALTS->{$user->{id}};
+
+    my $result = $user->{passhash} eq $sha->add($password, $salt->{salt})->hexdigest;
     if (!$result) {
         abort_authentication_error();
     }
-    session()->{user_id} = $result->{id};
-    return $result;
+    session()->{user_id} = $user->{id};
+    return $user;
 }
 
 sub current_user {
@@ -79,7 +143,7 @@ sub current_user {
 
     return undef if (!session()->{user_id});
 
-    $user = db->select_row('SELECT id, account_name, nick_name, email FROM users WHERE id=?', session()->{user_id});
+    $user = get_user(session()->{user_id});
     if (!$user) {
         session()->{user_id} = undef;
         abort_authentication_error();
@@ -89,23 +153,29 @@ sub current_user {
 
 sub get_user {
     my ($user_id) = @_;
-    my $user = db->select_row('SELECT * FROM users WHERE id = ?', $user_id);
+    my $user = $USERS->{$user_id};
     abort_content_not_found() if (!$user);
     return $user;
 }
 
 sub user_from_account {
     my ($account_name) = @_;
-    my $user = db->select_row('SELECT * FROM users WHERE account_name = ?', $account_name);
+    my $user = $USERS->{$account_name};
     abort_content_not_found() if (!$user);
     return $user;
+}
+
+sub friend_user_ids_of_user_id {
+    my ($user_id) = (@_);
+    my $friends_query = 'SELECT another FROM relations WHERE one = ? ORDER BY created_at DESC';
+    return [ map { $_->{another} } @{db->select_all($friends_query, $user_id)} ];
 }
 
 sub is_friend {
     my ($another_id) = @_;
     my $user_id = session()->{user_id};
-    my $query = 'SELECT COUNT(1) AS cnt FROM relations WHERE (one = ? AND another = ?) OR (one = ? AND another = ?)';
-    my $cnt = db->select_one($query, $user_id, $another_id, $another_id, $user_id);
+    my $query = 'SELECT COUNT(1) AS cnt FROM relations WHERE (one = ? AND another = ?)';
+    my $cnt = db->select_one($query, $user_id, $another_id);
     return $cnt > 0 ? 1 : 0;
 }
 
@@ -117,7 +187,7 @@ sub is_friend_account {
 sub mark_footprint {
     my ($user_id) = @_;
     if ($user_id != current_user()->{id}) {
-        my $query = 'INSERT INTO footprints (user_id,owner_id) VALUES (?,?)';
+        my $query = 'INSERT INTO footprints (user_id,owner_id, created_at_date) VALUES (?,?, CURRENT_DATE())';
         db->query($query, $user_id, current_user()->{id});
     }
 }
@@ -183,11 +253,17 @@ get '/logout' => [qw(set_global)] => sub {
 get '/' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
 
-    my $profile = db->select_row('SELECT * FROM profiles WHERE user_id = ?', current_user()->{id});
+    my $current_user = current_user();
+    # { idA => 1, idB => 2, ... }
+    my $friend_user_ids = friend_user_ids_of_user_id($current_user->{id});
+    my $friend_user_id_maps = {};
+    $friend_user_id_maps->{$_} = 1 for @$friend_user_ids;
+
+    my $profile = $PROFILES->{$current_user->{id}};
 
     my $entries_query = 'SELECT * FROM entries WHERE user_id = ? ORDER BY created_at LIMIT 5';
     my $entries = [];
-    for my $entry (@{db->select_all($entries_query, current_user()->{id})}) {
+    for my $entry (@{db->select_all($entries_query, $current_user->{id})}) {
         $entry->{is_private} = ($entry->{private} == 1);
         my ($title, $content) = split(/\n/, $entry->{body}, 2);
         $entry->{title} = $title;
@@ -196,16 +272,14 @@ get '/' => [qw(set_global authenticated)] => sub {
     }
 
     my $comments_for_me_query = <<SQL;
-SELECT c.id AS id, c.entry_id AS entry_id, c.user_id AS user_id, c.comment AS comment, c.created_at AS created_at
-FROM comments c
-JOIN entries e ON c.entry_id = e.id
-WHERE e.user_id = ?
-ORDER BY c.created_at DESC
+SELECT * FROM comments
+WHERE entry_user_id = ?
+ORDER BY created_at DESC
 LIMIT 10
 SQL
     my $comments_for_me = [];
     my $comments = [];
-    for my $comment (@{db->select_all($comments_for_me_query, current_user()->{id})}) {
+    for my $comment (@{db->select_all($comments_for_me_query, $current_user->{id})}) {
         my $comment_user = get_user($comment->{user_id});
         $comment->{account_name} = $comment_user->{account_name};
         $comment->{nick_name} = $comment_user->{nick_name};
@@ -213,23 +287,29 @@ SQL
     }
 
     my $entries_of_friends = [];
-    for my $entry (@{db->select_all('SELECT * FROM entries ORDER BY created_at DESC LIMIT 1000')}) {
-        next if (!is_friend($entry->{user_id}));
+    for my $entry (@{db->select_all('SELECT * FROM entries WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', $friend_user_ids)}) {
+#        next if ($friend_user_id_maps->{$entry->{user_id}});
         my ($title) = split(/\n/, $entry->{body});
         $entry->{title} = $title;
         my $owner = get_user($entry->{user_id});
         $entry->{account_name} = $owner->{account_name};
         $entry->{nick_name} = $owner->{nick_name};
         push @$entries_of_friends, $entry;
-        last if @$entries_of_friends+0 >= 10;
+#        last if @$entries_of_friends+0 >= 10;
     }
 
     my $comments_of_friends = [];
-    for my $comment (@{db->select_all('SELECT * FROM comments ORDER BY created_at DESC LIMIT 1000')}) {
-        next if (!is_friend($comment->{user_id}));
-        my $entry = db->select_row('SELECT * FROM entries WHERE id = ?', $comment->{entry_id});
+    my $comments_of_friends_src = db->select_all('SELECT * FROM comments WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', $friend_user_ids);
+    my $comment_parent_entry_ids = [ map { $_->{entry_id} } @$comments_of_friends_src ];
+    my $comment_parent_entries = db->select_all('SELECT * FROM entries WHERE id IN (?)', $comment_parent_entry_ids);
+    my $comment_parent_entries_map = { map { $_->{id} => $_ } @$comment_parent_entries };
+    for my $comment (@$comments_of_friends_src) {
+#        next if ($friend_user_id_maps->{$comment->{user_id}});
+        my $entry = $comment_parent_entries_map->{$comment->{entry_id}};
         $entry->{is_private} = ($entry->{private} == 1);
-        next if ($entry->{is_private} && !permitted($entry->{user_id}));
+        # permittedの元々の実装のうち、is_friendの部分だけ既に引いてきたデータを参照する
+        #     $another_id == current_user()->{id} || is_friend($another_id);
+        next if ($entry->{is_private} && !($entry->{user_id} == $current_user->{id} || $friend_user_id_maps->{$entry->{user_id}}));
         my $entry_owner = get_user($entry->{user_id});
         $entry->{account_name} = $entry_owner->{account_name};
         $entry->{nick_name} = $entry_owner->{nick_name};
@@ -238,47 +318,19 @@ SQL
         $comment->{account_name} = $comment_owner->{account_name};
         $comment->{nick_name} = $comment_owner->{nick_name};
         push @$comments_of_friends, $comment;
-        last if @$comments_of_friends+0 >= 10;
+#        last if @$comments_of_friends+0 >= 10;
     }
 
-    my $friends_query = 'SELECT * FROM relations WHERE one = ? OR another = ? ORDER BY created_at DESC';
-    my %friends = ();
-    my $friends = [];
-    for my $rel (@{db->select_all($friends_query, current_user()->{id}, current_user()->{id})}) {
-        my $key = ($rel->{one} == current_user()->{id} ? 'another' : 'one');
-        $friends{$rel->{$key}} ||= do {
-            my $friend = get_user($rel->{$key});
-            $rel->{account_name} = $friend->{account_name};
-            $rel->{nick_name} = $friend->{nick_name};
-            push @$friends, $rel;
-            $rel;
-        };
-    }
-
-    my $query = <<SQL;
-SELECT user_id, owner_id, DATE(created_at) AS date, MAX(created_at) as updated
-FROM footprints
-WHERE user_id = ?
-GROUP BY user_id, owner_id, DATE(created_at)
-ORDER BY updated DESC
-LIMIT 10
-SQL
-    my $footprints = [];
-    for my $fp (@{db->select_all($query, current_user()->{id})}) {
-        my $owner = get_user($fp->{owner_id});
-        $fp->{account_name} = $owner->{account_name};
-        $fp->{nick_name} = $owner->{nick_name};
-        push @$footprints, $fp;
-    }
+    my $footprints = get_footprints_for_user_id($current_user->{id}, 10);
 
     my $locals = {
-        'user' => current_user(),
+        'user' => $current_user,
         'profile' => $profile,
         'entries' => $entries,
         'comments_for_me' => $comments_for_me,
         'entries_of_friends' => $entries_of_friends,
         'comments_of_friends' => $comments_of_friends,
-        'friends' => $friends,
+        'count_of_friends' => scalar(@$friend_user_ids) // 0,
         'footprints' => $footprints
     };
     $c->render('index.tx', $locals);
@@ -288,7 +340,7 @@ get '/profile/:account_name' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
     my $account_name = $c->args->{account_name};
     my $owner = user_from_account($account_name);
-    my $prof = db->select_row('SELECT * FROM profiles WHERE user_id = ?', $owner->{id});
+    my $prof = $PROFILES->{$owner->{id}};
     $prof = {} if (!$prof);
     my $query;
     if (permitted($owner->{id})) {
@@ -320,7 +372,7 @@ get '/profile/:account_name' => [qw(set_global authenticated)] => sub {
 post '/profile/:account_name' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
     my $account_name = $c->args->{account_name};
-    if ($account_name != current_user()->{account_name}) {
+    if ($account_name ne current_user()->{account_name}) {
         abort_permission_denied();
     }
     my $first_name =  $c->req->param('first_name');
@@ -329,7 +381,7 @@ post '/profile/:account_name' => [qw(set_global authenticated)] => sub {
     my $birthday = $c->req->param('birthday');
     my $pref = $c->req->param('pref');
 
-    my $prof = db->select_row('SELECT * FROM profiles WHERE user_id = ?', current_user()->{id});
+    my $prof = $PROFILES->{current_user()->{id}};
     if ($prof) {
       my $query = <<SQL;
 UPDATE profiles
@@ -343,6 +395,7 @@ INSERT INTO profiles (user_id,first_name,last_name,sex,birthday,pref) VALUES (?,
 SQL
         db->query($query, current_user()->{id}, $first_name, $last_name, $sex, $birthday, $pref);
     }
+    $PROFILES->{current_user()->{id}} = db->select_row('SELECT * FROM profiles WHERE user_id = ?', current_user()->{id});
     redirect('/profile/'.$account_name);
 };
 
@@ -357,12 +410,21 @@ get '/diary/entries/:account_name' => [qw(set_global authenticated)] => sub {
         $query = 'SELECT * FROM entries WHERE user_id = ? AND private=0 ORDER BY created_at DESC LIMIT 20';
     }
     my $entries = [];
-    for my $entry (@{db->select_all($query, $owner->{id})}) {
+    my $entries_src = db->select_all($query, $owner->{id});
+    # commentsといいつつcountだけ
+    my $entry_comments = db->select_all('SELECT entry_id, COUNT(*) AS c FROM comments WHERE entry_id IN (?)', [ map { $_->{id} } @$entries_src ]);
+    my $entry_id_to_comments_count = +{};
+    for my $entry_comments (@$entry_comments) {
+        $entry_id_to_comments_count->{$_->{entry_id}} = $_->{c};
+    }
+
+    for my $entry (@$entries_src) {
         $entry->{is_private} = ($entry->{private} == 1);
         my ($title, $content) = split(/\n/, $entry->{body}, 2);
         $entry->{title} = $title;
         $entry->{content} = $content;
-        $entry->{comment_count} = db->select_one('SELECT COUNT(*) AS c FROM comments WHERE entry_id = ?', $entry->{id});
+        $entry->{comment_count} = $entry_id_to_comments_count->{$entry->{id}};
+#        $entry->{comment_count} = db->select_one('SELECT COUNT(*) AS c FROM comments WHERE entry_id = ?', $entry->{id});
         push @$entries, $entry;
     }
     mark_footprint($owner->{id});
@@ -423,41 +485,27 @@ post '/diary/comment/:entry_id' => [qw(set_global authenticated)] => sub {
     if ($entry->{is_private} && !permitted($entry->{user_id})) {
         abort_permission_denied();
     }
-    my $query = 'INSERT INTO comments (entry_id, user_id, comment) VALUES (?,?,?)';
+    my $query = 'INSERT INTO comments (entry_id, entry_user_id, user_id, comment) VALUES (?,?,?,?)';
     my $comment = $c->req->param('comment');
-    db->query($query, $entry->{id}, current_user()->{id}, $comment);
+    db->query($query, $entry->{id}, $entry->{user_id}, current_user()->{id}, $comment);
     redirect('/diary/entry/'.$entry->{id});
 };
 
 get '/footprints' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
-    my $query = <<SQL;
-SELECT user_id, owner_id, DATE(created_at) AS date, MAX(created_at) as updated
-FROM footprints
-WHERE user_id = ?
-GROUP BY user_id, owner_id, DATE(created_at)
-ORDER BY updated DESC
-LIMIT 50
-SQL
-    my $footprints = [];
-    for my $fp (@{db->select_all($query, current_user()->{id})}) {
-        my $owner = get_user($fp->{owner_id});
-        $fp->{account_name} = $owner->{account_name};
-        $fp->{nick_name} = $owner->{nick_name};
-        push @$footprints, $fp;
-    }
+
+    my $footprints = get_footprints_for_user_id(current_user()->{id}, 50);
     $c->render('footprints.tx', { footprints => $footprints });
 };
 
 get '/friends' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
-    my $query = 'SELECT * FROM relations WHERE one = ? OR another = ? ORDER BY created_at DESC';
+    my $query = 'SELECT * FROM relations WHERE one = ? ORDER BY created_at DESC';
     my %friends = ();
     my $friends = [];
-    for my $rel (@{db->select_all($query, current_user()->{id}, current_user()->{id})}) {
-        my $key = ($rel->{one} == current_user()->{id} ? 'another' : 'one');
-        $friends{$rel->{$key}} ||= do {
-            my $friend = get_user($rel->{$key});
+    for my $rel (@{db->select_all($query, current_user()->{id})}) {
+        $friends{$rel->{another}} ||= do {
+            my $friend = get_user($rel->{another});
             $rel->{account_name} = $friend->{account_name};
             $rel->{nick_name} = $friend->{nick_name};
             push @$friends, $rel;
@@ -481,6 +529,7 @@ post '/friends/:account_name' => [qw(set_global authenticated)] => sub {
 
 get '/initialize' => sub {
     my ($self, $c) = @_;
+
     db->query("DELETE FROM relations WHERE id > 500000");
     db->query("DELETE FROM footprints WHERE id > 500000");
     db->query("DELETE FROM entries WHERE id > 500000");
