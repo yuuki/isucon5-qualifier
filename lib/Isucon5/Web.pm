@@ -29,6 +29,13 @@ sub db {
     };
 }
 
+my $USERS;
+sub cache_users {
+    for (@{db->select_all("SELECT * FROM users")}) {
+        $USERS->{$_->{id}} = $_;
+    }
+}
+
 my ($SELF, $C);
 sub session {
     $C->stash->{session};
@@ -79,7 +86,7 @@ sub current_user {
 
     return undef if (!session()->{user_id});
 
-    $user = db->select_row('SELECT id, account_name, nick_name, email FROM users WHERE id=?', session()->{user_id});
+    $user = get_user(session->{user_id});
     if (!$user) {
         session()->{user_id} = undef;
         abort_authentication_error();
@@ -89,7 +96,7 @@ sub current_user {
 
 sub get_user {
     my ($user_id) = @_;
-    my $user = db->select_row('SELECT * FROM users WHERE id = ?', $user_id);
+    my $user = $USERS->{$user_id};
     abort_content_not_found() if (!$user);
     return $user;
 }
@@ -476,6 +483,8 @@ post '/friends/:account_name' => [qw(set_global authenticated)] => sub {
 
 get '/initialize' => sub {
     my ($self, $c) = @_;
+    cache_users();
+
     db->query("DELETE FROM relations WHERE id > 500000");
     db->query("DELETE FROM footprints WHERE id > 500000");
     db->query("DELETE FROM entries WHERE id > 500000");
