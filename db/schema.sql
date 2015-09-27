@@ -62,5 +62,7 @@ CREATE TABLE IF NOT EXISTS footprints (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `user_id` int NOT NULL,
   `owner_id` int NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at_date` date,
+  KEY `user_owner_date` (`user_id`, `owner_id`, `created_at_date`)
 ) DEFAULT CHARSET=utf8;
