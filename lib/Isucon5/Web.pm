@@ -96,9 +96,15 @@ sub get_user {
 
 sub user_from_account {
     my ($account_name) = @_;
-    my $user = db->select_row('SELECT * FROM users WHERE account_name = ?', $account_name);
+    my $user = db->select_row('SELECT * FROM users WHERE account_name = ?', $account_name); # indexないから貼った方がいいかも
     abort_content_not_found() if (!$user);
     return $user;
+}
+
+sub friend_user_ids_of_user_id {
+    my ($user_id) = (@_);
+    my $friends_query = 'SELECT * FROM relations WHERE one = ? ORDER BY created_at DESC';
+    return db->select_all($friends_query, $user_id);
 }
 
 sub is_friend {
@@ -183,6 +189,11 @@ get '/logout' => [qw(set_global)] => sub {
 get '/' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
 
+    # { idA => 1, idB => 2, ... }
+    my $friend_user_ids = friend_user_ids_of_user_id(current_user()->{id});
+    my $friend_user_id_maps = {};
+    $friend_user_id_maps->{$_} = 1 for @$friend_user_ids;
+
     my $profile = db->select_row('SELECT * FROM profiles WHERE user_id = ?', current_user()->{id});
 
     my $entries_query = 'SELECT * FROM entries WHERE user_id = ? ORDER BY created_at LIMIT 5';
@@ -214,7 +225,7 @@ SQL
 
     my $entries_of_friends = [];
     for my $entry (@{db->select_all('SELECT * FROM entries ORDER BY created_at DESC LIMIT 1000')}) {
-        next if (!is_friend($entry->{user_id}));
+        next if ($friend_user_id_maps->{$entry->{user_id}});
         my ($title) = split(/\n/, $entry->{body});
         $entry->{title} = $title;
         my $owner = get_user($entry->{user_id});
@@ -226,7 +237,7 @@ SQL
 
     my $comments_of_friends = [];
     for my $comment (@{db->select_all('SELECT * FROM comments ORDER BY created_at DESC LIMIT 1000')}) {
-        next if (!is_friend($comment->{user_id}));
+        next if ($friend_user_id_maps->{$comment->{user_id}});
         my $entry = db->select_row('SELECT * FROM entries WHERE id = ?', $comment->{entry_id});
         $entry->{is_private} = ($entry->{private} == 1);
         next if ($entry->{is_private} && !permitted($entry->{user_id}));
