@@ -7,3 +7,4 @@ requires "Plack::Session";
 
 requires "Cache::Memcached::Fast";
 requires "Plack::Middleware::Session::Simple";
+requires "Gazelle";
