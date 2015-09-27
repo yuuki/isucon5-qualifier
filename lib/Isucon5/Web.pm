@@ -510,7 +510,6 @@ post '/friends/:account_name' => [qw(set_global authenticated)] => sub {
 get '/initialize' => sub {
     my ($self, $c) = @_;
 
-    db->query("SELECT * FROM relations");
     db->query("DELETE FROM relations WHERE id > 500000");
     db->query("DELETE FROM footprints WHERE id > 500000");
     db->query("DELETE FROM entries WHERE id > 500000");
