@@ -320,7 +320,7 @@ get '/profile/:account_name' => [qw(set_global authenticated)] => sub {
 post '/profile/:account_name' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
     my $account_name = $c->args->{account_name};
-    if ($account_name != current_user()->{account_name}) {
+    if ($account_name ne current_user()->{account_name}) {
         abort_permission_denied();
     }
     my $first_name =  $c->req->param('first_name');
