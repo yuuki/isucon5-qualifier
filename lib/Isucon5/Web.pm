@@ -29,6 +29,13 @@ sub db {
     };
 }
 
+my $USERS;
+sub cache_users {
+    for (@{db->select_all("SELECT * FROM users")}) {
+        $USERS->{$_->{id}} = $_;
+    }
+}
+
 my ($SELF, $C);
 sub session {
     $C->stash->{session};
@@ -89,7 +96,7 @@ sub current_user {
 
 sub get_user {
     my ($user_id) = @_;
-    my $user = db->select_row('SELECT * FROM users WHERE id = ?', $user_id);
+    my $user = $USERS->{$user_id};
     abort_content_not_found() if (!$user);
     return $user;
 }
@@ -485,6 +492,10 @@ get '/initialize' => sub {
     db->query("DELETE FROM footprints WHERE id > 500000");
     db->query("DELETE FROM entries WHERE id > 500000");
     db->query("DELETE FROM comments WHERE id > 1500000");
+
+    cache_users();
+
+    return 1;
 };
 
 1;
