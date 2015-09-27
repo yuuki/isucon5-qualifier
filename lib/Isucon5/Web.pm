@@ -18,7 +18,7 @@ sub db {
             database => $ENV{ISUCON5_DB_NAME} || 'isucon5q',
         );
         DBIx::Sunny->connect(
-            "dbi:mysql:database=$db{database};host=$db{host};port=$db{port}", $db{username}, $db{password}, {
+            "dbi:mysql:database=$db{database};mysql_socket=/var/lib/mysql/mysql.sock", $db{username}, $db{password}, {
                 RaiseError => 1,
                 PrintError => 0,
                 AutoInactiveDestroy => 1,
