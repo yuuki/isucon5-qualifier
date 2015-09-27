@@ -73,6 +73,8 @@ sub build_app {
     my $tx = Text::Xslate->new(
         path => [ $self->root_dir . '/views' ],
         input_layer => ':utf8',
+        cache => 2,
+        cache_dir => '/tmp/.tx_cache',
         module => ['Text::Xslate::Bridge::TT2Like','Number::Format' => [':subs']],
         function => {
             fillinform => sub {

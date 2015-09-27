@@ -64,6 +64,13 @@ DISTRIBUTIONS
       strict 0
       version 0.88
       warnings 0
+  Cache-Memcached-Fast-0.23
+    pathname: K/KR/KROKI/Cache-Memcached-Fast-0.23.tar.gz
+    provides:
+      Cache::Memcached::Fast 0.23
+    requirements:
+      ExtUtils::MakeMaker 0
+      Test::More 0
   Capture-Tiny-0.22
     pathname: D/DA/DAGOLDEN/Capture-Tiny-0.22.tar.gz
     provides:
@@ -397,6 +404,14 @@ DISTRIBUTIONS
       Digest::base 1.00
       ExtUtils::MakeMaker 0
       perl 5.004
+  Digest-SHA2-1.1.1
+    pathname: A/AV/AVAR/Digest-SHA2-1.1.1.tar.gz
+    provides:
+      Digest::SHA2 1.001001
+    requirements:
+      Digest::base 1.00
+      ExtUtils::MakeMaker 0
+      MIME::Base64 0
   Encode-Locale-1.03
     pathname: G/GA/GAAS/Encode-Locale-1.03.tar.gz
     provides:
@@ -407,6 +422,14 @@ DISTRIBUTIONS
       ExtUtils::MakeMaker 0
       Test 0
       perl 5.008
+  Exporter-Tiny-0.042
+    pathname: T/TO/TOBYINK/Exporter-Tiny-0.042.tar.gz
+    provides:
+      Exporter::Shiny 0.042
+      Exporter::Tiny 0.042
+    requirements:
+      ExtUtils::MakeMaker 6.17
+      perl 5.006001
   ExtUtils-Config-0.007
     pathname: L/LE/LEONT/ExtUtils-Config-0.007.tar.gz
     provides:
@@ -482,12 +505,39 @@ DISTRIBUTIONS
       ExtUtils::MakeMaker 6.11
       File::Spec 0
       IO::Dir 0
+  File-Which-1.19
+    pathname: P/PL/PLICEASE/File-Which-1.19.tar.gz
+    provides:
+      File::Which 1.19
+    requirements:
+      ExtUtils::MakeMaker 0
+      perl 5.006
   Filesys-Notify-Simple-0.12
     pathname: M/MI/MIYAGAWA/Filesys-Notify-Simple-0.12.tar.gz
     provides:
       Filesys::Notify::Simple 0.12
     requirements:
       ExtUtils::MakeMaker 6.30
+  Gazelle-0.30
+    pathname: K/KA/KAZEBURO/Gazelle-0.30.tar.gz
+    provides:
+      Gazelle 0.30
+      Plack::Handler::Gazelle 0.30
+    requirements:
+      Guard 0
+      Module::Build 0.38
+      Parallel::Prefork 0
+      Plack 0
+      Server::Starter 0
+      Stream::Buffered 0
+      Try::Tiny 0
+      perl 5.008001
+  Guard-1.023
+    pathname: M/ML/MLEHMANN/Guard-1.023.tar.gz
+    provides:
+      Guard 1.023
+    requirements:
+      ExtUtils::MakeMaker 0
   HTML-FillInForm-Lite-1.13
     pathname: G/GF/GFUJI/HTML-FillInForm-Lite-1.13.tar.gz
     provides:
@@ -646,6 +696,12 @@ DISTRIBUTIONS
       File::Temp 0
       Scalar::Util 0
       Test::More 0.88
+  IPC-Signal-1.00
+    pathname: R/RO/ROSCH/IPC-Signal-1.00.tar.gz
+    provides:
+      IPC::Signal 1.00
+    requirements:
+      ExtUtils::MakeMaker 0
   JSON-2.59
     pathname: M/MA/MAKAMAKA/JSON-2.59.tar.gz
     provides:
@@ -713,6 +769,23 @@ DISTRIBUTIONS
     requirements:
       ExtUtils::MakeMaker 0
       perl 5.006002
+  List-MoreUtils-0.413
+    pathname: R/RE/REHSACK/List-MoreUtils-0.413.tar.gz
+    provides:
+      List::MoreUtils 0.413
+      List::MoreUtils::PP 0.413
+      List::MoreUtils::XS 0.413
+    requirements:
+      Carp 0
+      Exporter::Tiny 0.038
+      ExtUtils::MakeMaker 0
+      File::Basename 0
+      File::Copy 0
+      File::Path 0
+      File::Spec 0
+      IPC::Cmd 0
+      XSLoader 0
+      base 0
   Module-Build-0.4214
     pathname: L/LE/LEONT/Module-Build-0.4214.tar.gz
     provides:
@@ -884,6 +957,22 @@ DISTRIBUTIONS
       ExtUtils::MakeMaker 0
       POSIX 0
       Test::More 0
+  Parallel-Prefork-0.17
+    pathname: K/KA/KAZUHO/Parallel-Prefork-0.17.tar.gz
+    provides:
+      Parallel::Prefork 0.17
+      Parallel::Prefork::SpareWorkers undef
+      Parallel::Prefork::SpareWorkers::Scoreboard undef
+    requirements:
+      Class::Accessor::Lite 0.04
+      ExtUtils::MakeMaker 6.42
+      List::MoreUtils 0
+      Proc::Wait3 0.03
+      Scope::Guard 0
+      Signal::Mask 0
+      Test::Requires 0
+      Test::SharedFork 0
+      perl 5.008001
   Plack-1.0029
     pathname: M/MI/MIYAGAWA/Plack-1.0029.tar.gz
     provides:
@@ -1009,6 +1098,43 @@ DISTRIBUTIONS
       Digest::SHA1 0
       Module::Build::Tiny 0.023
       Plack 0.9910
+  Plack-Middleware-Session-Simple-0.03
+    pathname: K/KA/KAZEBURO/Plack-Middleware-Session-Simple-0.03.tar.gz
+    provides:
+      Plack::Middleware::Session::Simple 0.03
+      Plack::Middleware::Session::Simple::Session undef
+    requirements:
+      CPAN::Meta 0
+      CPAN::Meta::Prereqs 0
+      Cookie::Baker 0.02
+      Digest::SHA1 2.13
+      ExtUtils::CBuilder 0
+      Module::Build 0.38
+      Plack 1.0029
+      Scalar::Util 0
+      Tie::Hash 0
+      parent 0.223
+      perl 5.008005
+  Proc-Wait3-0.04
+    pathname: C/CT/CTILMES/Proc-Wait3-0.04.tar.gz
+    provides:
+      Proc::Wait3 0.04
+    requirements:
+      ExtUtils::MakeMaker 0
+  Redis-Fast-0.16
+    pathname: S/SH/SHOGO/Redis-Fast-0.16.tar.gz
+    provides:
+      Redis::Fast 0.16
+      Redis::Fast::Hash undef
+      Redis::Fast::List undef
+      Redis::Fast::Sentinel undef
+    requirements:
+      File::Which 0
+      Module::Build 0.38
+      Module::Build::XSUtil 0.02
+      Time::HiRes 0
+      Try::Tiny 0
+      perl 5.008001
   Router-Boom-1.02
     pathname: T/TO/TOKUHIROM/Router-Boom-1.02.tar.gz
     provides:
@@ -1019,6 +1145,34 @@ DISTRIBUTIONS
       Class::Accessor::Lite 0.05
       Module::Build 0.38
       perl 5.008005
+  Scope-Guard-0.21
+    pathname: C/CH/CHOCOLATE/Scope-Guard-0.21.tar.gz
+    provides:
+      Scope::Guard 0.21
+    requirements:
+      ExtUtils::MakeMaker 0
+      Test::More 0
+      perl 5.006001
+  Server-Starter-0.32
+    pathname: K/KA/KAZUHO/Server-Starter-0.32.tar.gz
+    provides:
+      Server::Starter 0.32
+      Server::Starter::Guard undef
+    requirements:
+      Module::Build 0.38
+      perl 5.008
+  Signal-Mask-0.008
+    pathname: L/LE/LEONT/Signal-Mask-0.008.tar.gz
+    provides:
+      Signal::Mask 0.008
+      Signal::Pending 0.008
+    requirements:
+      Carp 0
+      ExtUtils::MakeMaker 6.30
+      IPC::Signal 0
+      POSIX 0
+      strict 0
+      warnings 0
   Starman-0.4008
     pathname: M/MI/MIYAGAWA/Starman-0.4008.tar.gz
     provides:
