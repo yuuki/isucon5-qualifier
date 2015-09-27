@@ -10,25 +10,23 @@ use Encode;
 
 my $db;
 sub db {
-    $db ||= do {
-        my %db = (
-            host => $ENV{ISUCON5_DB_HOST} || 'localhost',
-            port => $ENV{ISUCON5_DB_PORT} || 3306,
-            username => $ENV{ISUCON5_DB_USER} || 'root',
-            password => $ENV{ISUCON5_DB_PASSWORD},
-            database => $ENV{ISUCON5_DB_NAME} || 'isucon5q',
-        );
-        # http://blog.nomadscafe.jp/2011/04/dbixsunny.html
-        Scope::Container::DBI->connect(
-            "dbi:mysql:database=$db{database};host=$db{host};port=$db{port}", $db{username}, $db{password}, {
-                RootClass  => 'DBIx::Sunny',
-                RaiseError => 1,
-                PrintError => 0,
-                AutoInactiveDestroy => 1,
-                mysql_enable_utf8   => 1,
-            },
-        );
-    };
+  my %db = (
+      host => $ENV{ISUCON5_DB_HOST} || 'localhost',
+      port => $ENV{ISUCON5_DB_PORT} || 3306,
+      username => $ENV{ISUCON5_DB_USER} || 'root',
+      password => $ENV{ISUCON5_DB_PASSWORD},
+      database => $ENV{ISUCON5_DB_NAME} || 'isucon5q',
+  );
+  # http://blog.nomadscafe.jp/2011/04/dbixsunny.html
+  Scope::Container::DBI->connect(
+      "dbi:mysql:database=$db{database};host=$db{host};port=$db{port}", $db{username}, $db{password}, {
+          RootClass  => 'DBIx::Sunny',
+          RaiseError => 1,
+          PrintError => 0,
+          AutoInactiveDestroy => 1,
+          mysql_enable_utf8   => 1,
+      },
+  );
 }
 
 my $USERS = +{};
