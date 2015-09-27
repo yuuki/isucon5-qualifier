@@ -73,7 +73,7 @@ sub abort_content_not_found {
 }
 
 sub get_footprints_for_user_id {
-    my ($user_id) = @_;
+    my ($user_id, $counts) = @_;
     my $footprints = [];
     my $footprints_map = +{}; # $footprints_map->{"$date$owner_id"} = 1;
 
@@ -82,10 +82,10 @@ SELECT user_id, owner_id, created_at_date, created_at as updated
 FROM footprints
 WHERE user_id = ?
 ORDER BY updated DESC
-LIMIT 50
+LIMIT ?
 SQL
     while (scalar @$footprints < 10) {
-        for my $fp (@{db->select_all($query, $user_id)}) {
+        for my $fp (@{db->select_all($query, $user_id, $counts)}) {
             my $key = $fp->{created_at_date} . $fp->{owner_id};
             # 同じ日の同じonwerからの足跡はskipする
             if ($footprints_map->{$key}) { next; }
@@ -324,7 +324,7 @@ SQL
 #        last if @$comments_of_friends+0 >= 10;
     }
 
-    my $footprints = get_footprints_for_user_id($current_user->{id});
+    my $footprints = get_footprints_for_user_id($current_user->{id}, 10);
 
     my $locals = {
         'user' => $current_user,
@@ -497,7 +497,7 @@ post '/diary/comment/:entry_id' => [qw(set_global authenticated)] => sub {
 get '/footprints' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
 
-    my $footprints = get_forprints_for_user_id(current_user()->{id});
+    my $footprints = get_forprints_for_user_id(current_user()->{id}, 50);
     $c->render('footprints.tx', { footprints => $footprints });
 };
 
