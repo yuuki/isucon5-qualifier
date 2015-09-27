@@ -33,6 +33,7 @@ my $USERS = +{};
 for (@{db->select_all("SELECT * FROM users")}) {
     $USERS->{$_->{id}} = $_;
     $USERS->{$_->{email}} = $_;
+    $USERS->{$_->{account_name}} = $_;
 }
 
 my $SALTS = +{};
@@ -71,7 +72,7 @@ my $sha = Digest::SHA->new(512);
 sub authenticate {
     my ($email, $password) = @_;
 
-    my $user = get_user($email);
+    my $user = $USERS->{$email};
     my $salt = $SALTS->{$user->{id}};
 
     my $result = $user->{passhash} eq $sha->add($password, $salt->{salt})->hexdigest;
@@ -107,7 +108,7 @@ sub get_user {
 
 sub user_from_account {
     my ($account_name) = @_;
-    my $user = db->select_row('SELECT * FROM users WHERE account_name = ?', $account_name); # indexないから貼った方がいいかも
+    my $user = $USERS->{$account_name};
     abort_content_not_found() if (!$user);
     return $user;
 }
