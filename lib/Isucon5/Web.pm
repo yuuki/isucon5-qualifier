@@ -41,6 +41,11 @@ for (@{db->select_all("SELECT * FROM salts")}) {
     $SALTS->{$_->{user_id}} = $_;
 }
 
+my $PROFILES = +{};
+for (@{db->select_all("SELECT * FROM profiles")}) {
+    $PROFILES->{$_->{user_id}} = $_;
+}
+
 my ($SELF, $C);
 sub session {
     $C->stash->{session};
@@ -206,7 +211,7 @@ get '/' => [qw(set_global authenticated)] => sub {
     my $friend_user_id_maps = {};
     $friend_user_id_maps->{$_} = 1 for @$friend_user_ids;
 
-    my $profile = db->select_row('SELECT * FROM profiles WHERE user_id = ?', current_user()->{id});
+    my $profile = $PROFILES->{current_user()->{id}};
 
     my $entries_query = 'SELECT * FROM entries WHERE user_id = ? ORDER BY created_at LIMIT 5';
     my $entries = [];
@@ -299,7 +304,7 @@ get '/profile/:account_name' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
     my $account_name = $c->args->{account_name};
     my $owner = user_from_account($account_name);
-    my $prof = db->select_row('SELECT * FROM profiles WHERE user_id = ?', $owner->{id});
+    my $prof = $PROFILES->{$owner->{id}};
     $prof = {} if (!$prof);
     my $query;
     if (permitted($owner->{id})) {
@@ -340,7 +345,7 @@ post '/profile/:account_name' => [qw(set_global authenticated)] => sub {
     my $birthday = $c->req->param('birthday');
     my $pref = $c->req->param('pref');
 
-    my $prof = db->select_row('SELECT * FROM profiles WHERE user_id = ?', current_user()->{id});
+    my $prof = $PROFILES->{current_user()->{id}};
     if ($prof) {
       my $query = <<SQL;
 UPDATE profiles
@@ -354,6 +359,7 @@ INSERT INTO profiles (user_id,first_name,last_name,sex,birthday,pref) VALUES (?,
 SQL
         db->query($query, current_user()->{id}, $first_name, $last_name, $sex, $birthday, $pref);
     }
+    $PROFILES->{current_user()->{id}} = db->select_row('SELECT * FROM profiles WHERE user_id = ?', current_user()->{id});
     redirect('/profile/'.$account_name);
 };
 
