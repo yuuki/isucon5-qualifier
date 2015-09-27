@@ -19,7 +19,7 @@ sub db {
   );
   # http://blog.nomadscafe.jp/2011/04/dbixsunny.html
   Scope::Container::DBI->connect(
-      "dbi:mysql:database=$db{database};host=$db{host};port=$db{port}", $db{username}, $db{password}, {
+      "dbi:mysql:database=$db{database};mysql_socket=/var/run/mysqld/mysqld.sock", $db{username}, $db{password}, {
           RootClass  => 'DBIx::Sunny',
           RaiseError => 1,
           PrintError => 0,
