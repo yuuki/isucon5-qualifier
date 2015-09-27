@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 sudo rm -f /var/lib/mysql/mysqld-slow.log
 sudo rm -f /var/log/nginx/isucon5.access_log.tsv /var/log/nginx/access.log
