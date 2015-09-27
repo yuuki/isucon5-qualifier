@@ -275,7 +275,7 @@ SQL
         'comments_for_me' => $comments_for_me,
         'entries_of_friends' => $entries_of_friends,
         'comments_of_friends' => $comments_of_friends,
-        'count_of_friends' => scalar(@$friend_ids) // 0,
+        'count_of_friends' => scalar(@$friend_user_ids) // 0,
         'footprints' => $footprints
     };
     $c->render('index.tx', $locals);
