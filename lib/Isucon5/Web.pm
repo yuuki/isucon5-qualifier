@@ -229,19 +229,19 @@ SQL
     }
 
     my $entries_of_friends = [];
-    for my $entry (@{db->select_all('SELECT * FROM entries ORDER BY created_at DESC LIMIT 1000')}) {
-        next if ($friend_user_id_maps->{$entry->{user_id}});
+    for my $entry (@{db->select_all('SELECT * FROM entries WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', $friend_user_ids)}) {
+#        next if ($friend_user_id_maps->{$entry->{user_id}});
         my ($title) = split(/\n/, $entry->{body});
         $entry->{title} = $title;
         my $owner = get_user($entry->{user_id});
         $entry->{account_name} = $owner->{account_name};
         $entry->{nick_name} = $owner->{nick_name};
         push @$entries_of_friends, $entry;
-        last if @$entries_of_friends+0 >= 10;
+#        last if @$entries_of_friends+0 >= 10;
     }
 
     my $comments_of_friends = [];
-    for my $comment (@{db->select_all('SELECT * FROM comments ORDER BY created_at DESC LIMIT 1000')}) {
+    for my $comment (@{db->select_all('SELECT * FROM comments WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', $friend_user_ids)}) {
         next if ($friend_user_id_maps->{$comment->{user_id}});
         my $entry = db->select_row('SELECT * FROM entries WHERE id = ?', $comment->{entry_id});
         $entry->{is_private} = ($entry->{private} == 1);
@@ -254,7 +254,7 @@ SQL
         $comment->{account_name} = $comment_owner->{account_name};
         $comment->{nick_name} = $comment_owner->{nick_name};
         push @$comments_of_friends, $comment;
-        last if @$comments_of_friends+0 >= 10;
+#        last if @$comments_of_friends+0 >= 10;
     }
 
     my $query = <<SQL;
