@@ -10,3 +10,4 @@ requires "Plack::Middleware::Session::Simple";
 requires "Gazelle";
 
 requires 'Digest::SHA2';
+requires 'Scope::Container::DBI';

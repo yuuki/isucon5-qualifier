@@ -5,6 +5,7 @@ use warnings;
 use utf8;
 use Kossy;
 use DBIx::Sunny;
+use Scope::Container::DBI;
 use Encode;
 
 my $db;
@@ -17,13 +18,14 @@ sub db {
             password => $ENV{ISUCON5_DB_PASSWORD},
             database => $ENV{ISUCON5_DB_NAME} || 'isucon5q',
         );
-        DBIx::Sunny->connect(
+        # http://blog.nomadscafe.jp/2011/04/dbixsunny.html
+        Scope::Container::DBI->connect(
             "dbi:mysql:database=$db{database};host=$db{host};port=$db{port}", $db{username}, $db{password}, {
+                RootClass  => 'DBIx::Sunny',
                 RaiseError => 1,
                 PrintError => 0,
                 AutoInactiveDestroy => 1,
                 mysql_enable_utf8   => 1,
-                mysql_auto_reconnect => 1,
             },
         );
     };
