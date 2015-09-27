@@ -30,10 +30,8 @@ sub db {
 }
 
 my $USERS;
-sub cache_users {
-    for (@{db->select_all("SELECT * FROM users")}) {
-        $USERS->{$_->{id}} = $_;
-    }
+for (@{db->select_all("SELECT * FROM users")}) {
+    $USERS->{$_->{id}} = $_;
 }
 
 my ($SELF, $C);
@@ -483,8 +481,6 @@ post '/friends/:account_name' => [qw(set_global authenticated)] => sub {
 
 get '/initialize' => sub {
     my ($self, $c) = @_;
-    cache_users();
-
     db->query("DELETE FROM relations WHERE id > 500000");
     db->query("DELETE FROM footprints WHERE id > 500000");
     db->query("DELETE FROM entries WHERE id > 500000");
