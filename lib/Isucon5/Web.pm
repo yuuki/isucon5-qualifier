@@ -242,7 +242,7 @@ SQL
 
     my $comments_of_friends = [];
     for my $comment (@{db->select_all('SELECT * FROM comments WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', $friend_user_ids)}) {
-        next if ($friend_user_id_maps->{$comment->{user_id}});
+#        next if ($friend_user_id_maps->{$comment->{user_id}});
         my $entry = db->select_row('SELECT * FROM entries WHERE id = ?', $comment->{entry_id});
         $entry->{is_private} = ($entry->{private} == 1);
         next if ($entry->{is_private} && !permitted($entry->{user_id}));
