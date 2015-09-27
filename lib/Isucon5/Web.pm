@@ -72,6 +72,56 @@ sub abort_content_not_found {
     $C->halt(404, encode_utf8($C->tx->render('error.tx', { message => '要求されたコンテンツは存在しません' })));
 }
 
+sub get_footprints_for_user_id {
+    my ($user_id, $counts) = @_;
+    my $footprints = [];
+    my $footprints_map = +{}; # $footprints_map->{"$date$owner_id"} = 1;
+
+    my $query = <<SQL;
+SELECT user_id, owner_id, created_at_date, created_at as updated
+FROM footprints
+WHERE user_id = ?
+ORDER BY created_at DESC
+LIMIT 50
+SQL
+    while (scalar @$footprints < $counts) {
+        for my $fp (@{db->select_all($query, $user_id)}) {
+            my $key = $fp->{created_at_date} . $fp->{owner_id};
+            # 同じ日の同じonwerからの足跡はskipする
+            if ($footprints_map->{$key}) { next; }
+            $footprints_map->{$key} = 1;
+
+            my $owner = get_user($fp->{owner_id});
+            $fp->{account_name} = $owner->{account_name};
+            $fp->{nick_name} = $owner->{nick_name};
+            push @$footprints, $fp;
+            last if scalar @$footprints >= $counts;
+        }
+    }
+    return $footprints;
+}
+
+# 使ってない
+sub _old_get_footprints_for_user_id {
+    my ($user_id) = @_;
+    my $query = <<SQL;
+SELECT user_id, owner_id, MAX(created_at) as updated
+FROM footprints
+WHERE user_id = ?
+GROUP BY user_id, owner_id, created_at_date
+ORDER BY updated DESC
+LIMIT 50
+SQL
+    my $footprints = [];
+    for my $fp (@{db->select_all($query, $user_id)}) {
+        my $owner = get_user($fp->{owner_id});
+        $fp->{account_name} = $owner->{account_name};
+        $fp->{nick_name} = $owner->{nick_name};
+        push @$footprints, $fp;
+    }
+    return $footprints;
+}
+
 use Digest::SHA;
 my $sha = Digest::SHA->new(512);
 sub authenticate {
@@ -274,21 +324,7 @@ SQL
 #        last if @$comments_of_friends+0 >= 10;
     }
 
-    my $query = <<SQL;
-SELECT user_id, owner_id, MAX(created_at) as updated
-FROM footprints
-WHERE user_id = ?
-GROUP BY user_id, owner_id, created_at_date
-ORDER BY updated DESC
-LIMIT 10
-SQL
-    my $footprints = [];
-    for my $fp (@{db->select_all($query, $current_user->{id})}) {
-        my $owner = get_user($fp->{owner_id});
-        $fp->{account_name} = $owner->{account_name};
-        $fp->{nick_name} = $owner->{nick_name};
-        push @$footprints, $fp;
-    }
+    my $footprints = get_footprints_for_user_id($current_user->{id}, 10);
 
     my $locals = {
         'user' => $current_user,
@@ -460,21 +496,8 @@ post '/diary/comment/:entry_id' => [qw(set_global authenticated)] => sub {
 
 get '/footprints' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
-    my $query = <<SQL;
-SELECT user_id, owner_id, MAX(created_at) as updated
-FROM footprints
-WHERE user_id = ?
-GROUP BY user_id, owner_id, created_at_date
-ORDER BY updated DESC
-LIMIT 50
-SQL
-    my $footprints = [];
-    for my $fp (@{db->select_all($query, current_user()->{id})}) {
-        my $owner = get_user($fp->{owner_id});
-        $fp->{account_name} = $owner->{account_name};
-        $fp->{nick_name} = $owner->{nick_name};
-        push @$footprints, $fp;
-    }
+
+    my $footprints = get_footprints_for_user_id(current_user()->{id}, 50);
     $c->render('footprints.tx', { footprints => $footprints });
 };
 
