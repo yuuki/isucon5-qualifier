@@ -239,9 +239,13 @@ SQL
     }
 
     my $comments_of_friends = [];
-    for my $comment (@{db->select_all('SELECT * FROM comments WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', $friend_user_ids)}) {
+    my $comments_of_friends_src = db->select_all('SELECT * FROM comments WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', $friend_user_ids);
+    my $comment_parent_entry_ids = [ map { $_->{entry_id} } @$comments_of_friends_src ];
+    my $comment_parent_entries = db->select_all('SELECT * FROM entries WHERE id IN (?)', $comment_parent_entry_ids);
+    my $comment_parent_entries_map = { map { $_->{id} => $_ } @$comment_parent_entries };
+    for my $comment (@$comments_of_friends_src) {
 #        next if ($friend_user_id_maps->{$comment->{user_id}});
-        my $entry = db->select_row('SELECT * FROM entries WHERE id = ?', $comment->{entry_id});
+        my $entry = $comment_parent_entries_map->{$comment->{entry_id}};
         $entry->{is_private} = ($entry->{private} == 1);
         next if ($entry->{is_private} && !permitted($entry->{user_id}));
         my $entry_owner = get_user($entry->{user_id});
