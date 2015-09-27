@@ -71,7 +71,7 @@ my $sha = Digest::SHA->new(512);
 sub authenticate {
     my ($email, $password) = @_;
 
-    my $user = get_user($_->{email});
+    my $user = get_user($email);
     my $salt = $SALTS->{$user->{id}};
 
     my $result = $user->{passhash} eq $sha->add($password, $salt->{salt})->hexdigest;
