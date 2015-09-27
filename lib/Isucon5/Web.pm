@@ -259,7 +259,9 @@ SQL
 #        next if ($friend_user_id_maps->{$comment->{user_id}});
         my $entry = $comment_parent_entries_map->{$comment->{entry_id}};
         $entry->{is_private} = ($entry->{private} == 1);
-        next if ($entry->{is_private} && !permitted($entry->{user_id}));
+        # permittedの元々の実装のうち、is_friendの部分だけ既に引いてきたデータを参照する
+        #     $another_id == current_user()->{id} || is_friend($another_id);
+        next if ($entry->{is_private} && !($entry->{user_id} == current_user()->{id} || $friend_user_id_maps->{$entry->{user_id}});
         my $entry_owner = get_user($entry->{user_id});
         $entry->{account_name} = $entry_owner->{account_name};
         $entry->{nick_name} = $entry_owner->{nick_name};
