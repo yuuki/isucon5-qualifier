@@ -497,7 +497,7 @@ post '/diary/comment/:entry_id' => [qw(set_global authenticated)] => sub {
 get '/footprints' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
 
-    my $footprints = get_forprints_for_user_id(current_user()->{id}, 50);
+    my $footprints = get_footprints_for_user_id(current_user()->{id}, 50);
     $c->render('footprints.tx', { footprints => $footprints });
 };
 
