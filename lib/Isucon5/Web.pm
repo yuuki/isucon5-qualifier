@@ -81,7 +81,7 @@ sub get_footprints_for_user_id {
 SELECT user_id, owner_id, created_at_date, created_at as updated
 FROM footprints
 WHERE user_id = ?
-ORDER BY updated DESC
+ORDER BY created_at DESC
 LIMIT ?
 SQL
     while (scalar @$footprints < 10) {
