@@ -367,12 +367,21 @@ get '/diary/entries/:account_name' => [qw(set_global authenticated)] => sub {
         $query = 'SELECT * FROM entries WHERE user_id = ? AND private=0 ORDER BY created_at DESC LIMIT 20';
     }
     my $entries = [];
-    for my $entry (@{db->select_all($query, $owner->{id})}) {
+    my $entries_src = db->select_all($query, $owner->{id});
+    # commentsといいつつcountだけ
+    my $entry_comments = db->select_all('SELECT entry_id, COUNT(*) AS c FROM comments WHERE entry_id IN (?)', [ map { $_->{id} } @$entries_src ]);
+    my $entry_id_to_comments_count = +{};
+    for my $entry_comments (@$entry_comments) {
+        $entry_id_to_comments_count->{$_->{entry_id}} = $_->{c};
+    }
+
+    for my $entry (@$entries_src) {
         $entry->{is_private} = ($entry->{private} == 1);
         my ($title, $content) = split(/\n/, $entry->{body}, 2);
         $entry->{title} = $title;
         $entry->{content} = $content;
-        $entry->{comment_count} = db->select_one('SELECT COUNT(*) AS c FROM comments WHERE entry_id = ?', $entry->{id});
+        $entry->{comment_count} = $entry_id_to_comments_count->{$entry->{id}};
+#        $entry->{comment_count} = db->select_one('SELECT COUNT(*) AS c FROM comments WHERE entry_id = ?', $entry->{id});
         push @$entries, $entry;
     }
     mark_footprint($owner->{id});
