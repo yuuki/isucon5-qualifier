@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS comments (
   `comment` text,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY `entry_id` (`entry_id`),
+  KEY `user_id` (`user_id`,`created_at`),
   KEY `created_at` (`created_at`)
 ) DEFAULT CHARSET=utf8mb4;
 
