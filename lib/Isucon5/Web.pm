@@ -454,7 +454,7 @@ get '/friends' => [qw(set_global authenticated)] => sub {
     my $query = 'SELECT * FROM relations WHERE one = ? ORDER BY created_at DESC';
     my %friends = ();
     my $friends = [];
-    for my $rel (@{db->select_all($query, current_user()->{id}) {
+    for my $rel (@{db->select_all($query, current_user()->{id})}) {
         my $key = ($rel->{one} == current_user()->{id} ? 'another' : 'one');
         $friends{$rel->{$key}} ||= do {
             my $friend = get_user($rel->{$key});
