@@ -206,16 +206,17 @@ get '/logout' => [qw(set_global)] => sub {
 get '/' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
 
+    my $current_user = current_user();
     # { idA => 1, idB => 2, ... }
-    my $friend_user_ids = friend_user_ids_of_user_id(current_user()->{id});
+    my $friend_user_ids = friend_user_ids_of_user_id($current_user->{id});
     my $friend_user_id_maps = {};
     $friend_user_id_maps->{$_} = 1 for @$friend_user_ids;
 
-    my $profile = $PROFILES->{current_user()->{id}};
+    my $profile = $PROFILES->{$current_user->{id}};
 
     my $entries_query = 'SELECT * FROM entries WHERE user_id = ? ORDER BY created_at LIMIT 5';
     my $entries = [];
-    for my $entry (@{db->select_all($entries_query, current_user()->{id})}) {
+    for my $entry (@{db->select_all($entries_query, $current_user->{id})}) {
         $entry->{is_private} = ($entry->{private} == 1);
         my ($title, $content) = split(/\n/, $entry->{body}, 2);
         $entry->{title} = $title;
@@ -231,7 +232,7 @@ LIMIT 10
 SQL
     my $comments_for_me = [];
     my $comments = [];
-    for my $comment (@{db->select_all($comments_for_me_query, current_user()->{id})}) {
+    for my $comment (@{db->select_all($comments_for_me_query, $current_user->{id})}) {
         my $comment_user = get_user($comment->{user_id});
         $comment->{account_name} = $comment_user->{account_name};
         $comment->{nick_name} = $comment_user->{nick_name};
@@ -261,7 +262,7 @@ SQL
         $entry->{is_private} = ($entry->{private} == 1);
         # permittedの元々の実装のうち、is_friendの部分だけ既に引いてきたデータを参照する
         #     $another_id == current_user()->{id} || is_friend($another_id);
-        next if ($entry->{is_private} && !($entry->{user_id} == current_user()->{id} || $friend_user_id_maps->{$entry->{user_id}});
+        next if ($entry->{is_private} && !($entry->{user_id} == $current_user->{id} || $friend_user_id_maps->{$entry->{user_id}});
         my $entry_owner = get_user($entry->{user_id});
         $entry->{account_name} = $entry_owner->{account_name};
         $entry->{nick_name} = $entry_owner->{nick_name};
@@ -282,7 +283,7 @@ ORDER BY updated DESC
 LIMIT 10
 SQL
     my $footprints = [];
-    for my $fp (@{db->select_all($query, current_user()->{id})}) {
+    for my $fp (@{db->select_all($query, $current_user->{id})}) {
         my $owner = get_user($fp->{owner_id});
         $fp->{account_name} = $owner->{account_name};
         $fp->{nick_name} = $owner->{nick_name};
@@ -290,7 +291,7 @@ SQL
     }
 
     my $locals = {
-        'user' => current_user(),
+        'user' => $current_user,
         'profile' => $profile,
         'entries' => $entries,
         'comments_for_me' => $comments_for_me,
