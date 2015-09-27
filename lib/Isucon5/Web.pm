@@ -84,7 +84,7 @@ sub current_user {
 
     return undef if (!session()->{user_id});
 
-    $user = get_user(session->{user_id});
+    $user = get_user(session()->{user_id});
     if (!$user) {
         session()->{user_id} = undef;
         abort_authentication_error();
