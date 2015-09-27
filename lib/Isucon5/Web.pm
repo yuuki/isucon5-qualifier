@@ -29,9 +29,15 @@ sub db {
     };
 }
 
-my $USERS;
+my $USERS = +{};
 for (@{db->select_all("SELECT * FROM users")}) {
     $USERS->{$_->{id}} = $_;
+    $USERS->{$_->{email}} = $_;
+}
+
+my $SALTS = +{};
+for (@{db->select_all("SELECT * FROM salts")}) {
+    $SALTS->{$_->{user_id}} = $_;
 }
 
 my ($SELF, $C);
@@ -60,20 +66,20 @@ sub abort_content_not_found {
     $C->halt(404, encode_utf8($C->tx->render('error.tx', { message => '要求されたコンテンツは存在しません' })));
 }
 
+use Digest::SHA;
+my $sha = Digest::SHA->new(512);
 sub authenticate {
     my ($email, $password) = @_;
-    my $query = <<SQL;
-SELECT u.id AS id, u.account_name AS account_name, u.nick_name AS nick_name, u.email AS email
-FROM users u
-JOIN salts s ON u.id = s.user_id
-WHERE u.email = ? AND u.passhash = SHA2(CONCAT(?, s.salt), 512)
-SQL
-    my $result = db->select_row($query, $email, $password);
+
+    my $user = get_user($_->{email});
+    my $salt = $SALTS->{$user->{id}};
+
+    my $result = $user->{passhash} eq $sha->add($password, $salt->{salt})->hexdigest;
     if (!$result) {
         abort_authentication_error();
     }
-    session()->{user_id} = $result->{id};
-    return $result;
+    session()->{user_id} = $user->{id};
+    return $user;
 }
 
 sub current_user {
