@@ -1,7 +1,7 @@
 : cascade base
 : around content -> {
 
-<form action="<: $c.req.uri_for('/memo') :>" method="post">
+<form action="<: '/memo' :>" method="post">
   <input type="hidden" name="sid" value="<: $c.stash.session.token :>">
   <textarea name="content"></textarea>
   <br>
@@ -14,7 +14,7 @@
 <ul>
 : for $memos -> $memo {
 <li>
-  <a href="<: $c.req.uri_for('/memo/') :><: $memo.id :>"><: $memo.content.split('\r?\n').first() :></a> <: $memo.created_at :>
+  <a href="<: '/memo/' :><: $memo.id :>"><: $memo.content.split('\r?\n').first() :></a> <: $memo.created_at :>
 :   if $memo.is_private {
 [private]
 :   }
