@@ -252,19 +252,6 @@ SQL
         last if @$comments_of_friends+0 >= 10;
     }
 
-    my $friends_query = 'SELECT * FROM relations WHERE one = ? ORDER BY created_at DESC';
-    my %friends = ();
-    my $friends = [];
-    for my $rel (@{db->select_all($friends_query, current_user()->{id})}) {
-        $friends{$rel->{another}} ||= do {
-            my $friend = get_user($rel->{another});
-            $rel->{account_name} = $friend->{account_name};
-            $rel->{nick_name} = $friend->{nick_name};
-            push @$friends, $rel;
-            $rel;
-        };
-    }
-
     my $query = <<SQL;
 SELECT user_id, owner_id, DATE(created_at) AS date, MAX(created_at) as updated
 FROM footprints
@@ -288,7 +275,7 @@ SQL
         'comments_for_me' => $comments_for_me,
         'entries_of_friends' => $entries_of_friends,
         'comments_of_friends' => $comments_of_friends,
-        'friends' => $friends,
+        'count_of_friends' => scalar(@$friend_ids) // 0,
         'footprints' => $footprints
     };
     $c->render('index.tx', $locals);
