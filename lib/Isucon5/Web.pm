@@ -588,6 +588,9 @@ get '/initialize' => sub {
     db->query("DELETE FROM footprints WHERE id > 500000");
     db->query("DELETE FROM entries WHERE id > 500000");
     db->query("DELETE FROM comments WHERE id > 1500000");
+    redis->flushall();
+    system("/usr/bin/redis-cli --pipe < /home/isucon/appendonly.aof")
+            if -e "/home/isucon/appendonly.aof";
 };
 
 1;
