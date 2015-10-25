@@ -11,6 +11,7 @@ ORDER BY created_at DESC
 SQL
 
 # powerful importer
+# carton exec -- perl -Ilib scripts/import_footprint.pl
 
 # initialize
 my $redis = Isucon5::Web::redis;
