@@ -246,7 +246,7 @@ sub mark_footprint_redis_raw {
     my ($from_user_id, $target_user_id, $epoch, $date_str) = @_;
     my $footprint_key = "footprint-" . $target_user_id; # TODO どっかに
     my $day_unique_user = $date_str . ':' . $from_user_id; # day unique
-    redis->zadd($footprint_key, time, $day_unique_user);
+    redis->zadd($footprint_key, $epoch, $day_unique_user);
 }
 
 sub permitted {
