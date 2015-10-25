@@ -89,7 +89,7 @@ sub get_footprints_for_user_id_by_redis {
     # countsが2の場合、0と2がkeyで1と3がvalue
     for my $key_index (0..2*($counts-1)) {
         my $key = $kv_pairs->[$key_index];
-        my $value = $kv_piars->[$key_index+1];
+        my $value = $kv_pairs->[$key_index+1];
         # 2015-08-18:hogehoge
         my $from_user_id = substr($key, 11);
         # epoch => DateTime
