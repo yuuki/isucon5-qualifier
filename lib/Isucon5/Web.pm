@@ -91,6 +91,8 @@ sub get_footprints_for_user_id_by_redis {
         my $key_index = $index*2;
         my $key = $kv_pairs->[$key_index];
         my $value = $kv_pairs->[$key_index+1];
+        warn "key : $key";
+        warn "value: $value";
         # 2015-08-18:hogehoge
         my $from_user_id = substr($key, 11);
         # epoch => DateTime
