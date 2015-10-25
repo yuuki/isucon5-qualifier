@@ -11,3 +11,5 @@ requires "Gazelle";
 
 requires 'Digest::SHA2';
 requires 'Scope::Container::DBI';
+
+requires 'Redis::Fast';

@@ -7,6 +7,7 @@ use Kossy;
 use DBIx::Sunny;
 use Scope::Container::DBI;
 use Encode;
+use Redis::Fast;
 
 my $db;
 sub db {
@@ -27,6 +28,12 @@ sub db {
           mysql_enable_utf8   => 1,
       },
   );
+}
+
+# 親から呼ぶとinstance cacheがめちゃくちゃになるのでweb processの中からしか呼ばないでネ
+my $redis;
+sub redis {
+    $redis ||= Redis::Fast->new;
 }
 
 my $USERS = +{};
@@ -70,6 +77,31 @@ sub abort_permission_denied {
 
 sub abort_content_not_found {
     $C->halt(404, encode_utf8($C->tx->render('error.tx', { message => '要求されたコンテンツは存在しません' })));
+}
+
+sub get_footprints_for_user_id_by_redis {
+    my ($user_id, $counts) = @_;
+
+    my $key = "footprint-" . $user_id;
+    # key1, value, key2, value2, ... だからhashで受けるとorder崩壊する
+    my $kv_pairs = redis->zrevrange($key, 0, ($count-1), 'WITHSCORES'); # 0,3 なら0,1,2,3の4件とれる
+    my $res = [];
+    # countsが2の場合、0と2がkeyで1と3がvalue
+    for my $key_index (0..2*($count-1)) {
+        my $key = $kv_pairs->[$key_index];
+        my $value = $kv_piars->[$key_index+1];
+        # 2015-08-18:hogehoge
+        my $from_user_id = substr($key, 11);
+        # epoch => DateTime
+        my @time = localtime($value);
+        my $mysql_like_timestamp = sprintf(
+            '%04d-%02d-%02d %02d:%02d:%02d',
+            $time[5]+1900, $time[4]+1, $time[3], $time[2], $time[1], $time[0]
+        );
+        push @$res, +{ user_id => $user_id, owner_id => $from_user_id, updated => $mysql_like_timestamp};
+    }
+
+    $res;
 }
 
 sub get_footprints_for_user_id {
@@ -184,12 +216,34 @@ sub is_friend_account {
     is_friend(user_from_account($account_name)->{id});
 }
 
+# 日を跨いでベンチ実行されるとまずい
+my $today;
+sub today {
+    $today ||= do {
+        my (undef, undef, undef, $mday, $mon, $year) = localtime();
+        sprintf('%04d-%02d-%02d', $year+1900, $mon+1, $mday); # mon is 0-started!
+    };
+}
+
 sub mark_footprint {
     my ($user_id) = @_;
     if ($user_id != current_user()->{id}) {
         my $query = 'INSERT INTO footprints (user_id,owner_id, created_at_date) VALUES (?,?, CURRENT_DATE())';
         db->query($query, $user_id, current_user()->{id});
+        # あとでこっちによせる
+        mark_footprint_redis_raw(current_user()->{id}, $user_id, time(), $today);
     }
+}
+
+# time順に並んでいるので、zrange, 0, 2にすると古い方から3件
+# zrevrange, 0, 2 にすると新しい方から3件
+# get_footprints_of_user_id経由しか取っていなくて、day-uniqueなので
+# day-uniqueな感じで入れる
+sub mark_footprint_redis_raw {
+    my ($from_user_id, $target_user_id, $epoch, $date_str) = @_;
+    my $footprint_key = "footprint-" . $target_user_id; # TODO どっかに
+    my $day_unique_user = $date_str . ':' . $from_user_id); # day unique
+    redis->zadd($footprint_key, time, $day_unique_user);
 }
 
 sub permitted {
@@ -321,7 +375,7 @@ SQL
 #        last if @$comments_of_friends+0 >= 10;
     }
 
-    my $footprints = get_footprints_for_user_id($current_user->{id}, 10);
+    my $footprints = get_footprints_for_user_id_by_redis($current_user->{id}, 10);
 
     my $locals = {
         'user' => $current_user,
@@ -494,7 +548,7 @@ post '/diary/comment/:entry_id' => [qw(set_global authenticated)] => sub {
 get '/footprints' => [qw(set_global authenticated)] => sub {
     my ($self, $c) = @_;
 
-    my $footprints = get_footprints_for_user_id(current_user()->{id}, 50);
+    my $footprints = get_footprints_for_user_id_by_redis(current_user()->{id}, 50);
     $c->render('footprints.tx', { footprints => $footprints });
 };
 
