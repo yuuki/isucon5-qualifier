@@ -101,7 +101,14 @@ sub get_footprints_for_user_id_by_redis {
             '%04d-%02d-%02d %02d:%02d:%02d',
             $time[5]+1900, $time[4]+1, $time[3], $time[2], $time[1], $time[0]
         );
-        push @$res, +{ user_id => $user_id, owner_id => $from_user_id, updated => $mysql_like_timestamp};
+        my $from_user = get_user($from_user_id);
+        push @$res, +{
+            user_id => $user_id,
+            owner_id => $from_user_id,
+            updated => $mysql_like_timestamp,
+            account_name => $from_user->{account_name};
+            nick_name => $from_user->{nick_name};
+        };
     }
 
     $res;
