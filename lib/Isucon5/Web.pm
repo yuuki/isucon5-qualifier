@@ -84,10 +84,10 @@ sub get_footprints_for_user_id_by_redis {
 
     my $key = "footprint-" . $user_id;
     # key1, value, key2, value2, ... だからhashで受けるとorder崩壊する
-    my $kv_pairs = redis->zrevrange($key, 0, ($count-1), 'WITHSCORES'); # 0,3 なら0,1,2,3の4件とれる
+    my $kv_pairs = redis->zrevrange($key, 0, ($counts-1), 'WITHSCORES'); # 0,3 なら0,1,2,3の4件とれる
     my $res = [];
     # countsが2の場合、0と2がkeyで1と3がvalue
-    for my $key_index (0..2*($count-1)) {
+    for my $key_index (0..2*($counts-1)) {
         my $key = $kv_pairs->[$key_index];
         my $value = $kv_piars->[$key_index+1];
         # 2015-08-18:hogehoge
