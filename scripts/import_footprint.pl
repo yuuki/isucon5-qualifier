@@ -11,7 +11,11 @@ ORDER BY created_at DESC
 SQL
 
 # powerful importer
-my $db = Isucon5::db;
+
+# initialize
+my $redis = Isucon5::Web::redis;
+$redis->flushall();
+my $db = Isucon5::Web::db;
 for my $row (@{$db->select_all($query)}) {
     Isucon5::Web::mark_foot_print_redis_raw(
         $row->{owner_id}, $row->{user_id}, $row->{epoch}, $row->{created_at_date}
