@@ -87,7 +87,8 @@ sub get_footprints_for_user_id_by_redis {
     my $kv_pairs = redis->zrevrange($key, 0, ($counts-1), 'WITHSCORES'); # 0,3 なら0,1,2,3の4件とれる
     my $res = [];
     # countsが2の場合、0と2がkeyで1と3がvalue
-    for my $key_index (0..2*($counts-1)) {
+    for my $index (0..($counts-1)) {
+        my $key_index = $index*2;
         my $key = $kv_pairs->[$key_index];
         my $value = $kv_pairs->[$key_index+1];
         # 2015-08-18:hogehoge
