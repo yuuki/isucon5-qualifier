@@ -104,8 +104,8 @@ sub get_footprints_for_user_id_by_redis {
             user_id => $user_id,
             owner_id => $from_user_id,
             updated => $mysql_like_timestamp,
-            account_name => $from_user->{account_name};
-            nick_name => $from_user->{nick_name};
+            account_name => $from_user->{account_name},
+            nick_name => $from_user->{nick_name},
         };
     }
 
